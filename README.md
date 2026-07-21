@@ -85,10 +85,34 @@ doctors-copilot/
 │   │   ├── hooks/                # useAudioStreamer (WebRTC & WebSocket management)
 │   │   └── types/                # Clinical domain interfaces & state models
 └── infra/                        # Terraform Infrastructure-as-Code (VNet, Private Endpoints, Cosmos, ACA)
+
 🚀 Getting Started (Local Development)
 Prerequisites
 Node.js 20+ and npm/pnpm
-
 Python 3.12+ and Docker Desktop
-
 An active Azure Subscription with deployed AI Speech and OpenAI resources.
+
+1. Backend Setup
+Bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Export local environment variables
+export AZURE_SPEECH_KEY="your_speech_key"
+export AZURE_SPEECH_REGION="eastus"
+export ENTRA_TENANT_ID="your_entra_tenant_id"
+export ENTRA_CLIENT_ID="your_api_client_id"
+
+# Launch async Uvicorn server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+2. Frontend Setup
+Bash
+cd frontend
+npm install
+
+# Configure environment variables in .env.local
+# AUTH_MICROSOFT_ENTRA_ID_ID, AUTH_MICROSOFT_ENTRA_ID_SECRET, etc.
+
+npm run dev
+Navigate to http://localhost:3000 to access the clinician review workspace.
