@@ -111,6 +111,36 @@ Bash
 cd frontend
 npm install
 
+Check List:
+Here is the complete checklist of the files
+
+1. Backend Service Files (backend/)
+backend/requirements.txt (Core dependencies)
+backend/requirements-dev.txt (Testing dependencies: pytest, pytest-asyncio, httpx, pytest-mock)
+backend/Dockerfile (Hardened 3-stage non-root container with static FFmpeg)
+backend/app/main.py (FastAPI app entrypoint with OpenTelemetry instrumentation)
+backend/app/services/service_bus_mesh.py (Azure Service Bus queue publisher/consumer)
+backend/app/services/medical_rag.py (Azure AI Search vector RAG service for clinical guidelines)
+backend/app/services/langgraph_orchestrator.py (Self-correcting LangGraph multi-agent loop: Extraction, SOAP, Coding, Validation)
+backend/app/services/fhir_client.py (Azure Health Data Services FHIR R4 direct sync engine)
+backend/app/services/edi_generator.py (ANSI X12 5010A1 837P professional claim generator)
+backend/app/core/telemetry.py (OpenTelemetry & Azure Application Insights tracer configuration)
+backend/tests/conftest.py (Pytest fixtures and test client setup)
+backend/tests/test_websocket.py (WebSocket audio stream integration test)
+backend/tests/test_ledger.py (Cosmos DB append-only ledger and versioning test)
+backend/tests/test_langgraph.py (LangGraph multi-agent workflow test)
+backend/tests/test_enterprise_ready.py (Enterprise EDI and system validation test)
+2. Frontend Application Files (frontend/)
+frontend/Dockerfile (Next.js standalone runner container configuration)
+frontend/package.json & configuration files (Next.js 14 App Router, TypeScript, Tailwind CSS, Auth.js)
+3. Infrastructure & DevOps Files (infra/ & .github/)
+infra/main.tf & related Terraform scripts (Virtual Network, Private Endpoints, Cosmos DB, Key Vault, Azure AI Foundry, Container Apps)
+infra/cosmosdb.tf (Cosmos DB NoSQL ledger and backup definitions)
+.github/workflows/terraform.yml (Automated IaC provisioning via Azure OIDC)
+.github/workflows/deploy-app.yml (DevSecOps build, Trivy CVE scan, and Container Apps zero-downtime deploy)
+4. Local Orchestration (docker-compose.yml)
+docker-compose.yml (Spins up the Next.js frontend, FastAPI backend with FFmpeg, and the local Linux Azure Cosmos DB Emulator)
+
 # Configure environment variables in .env.local
 # AUTH_MICROSOFT_ENTRA_ID_ID, AUTH_MICROSOFT_ENTRA_ID_SECRET, etc.
 
