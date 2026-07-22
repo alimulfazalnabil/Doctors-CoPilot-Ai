@@ -9,137 +9,84 @@
 
 ---
 
-## 📌 Executive Summary
-**Doctors Copilot** is a HIPAA- and GDPR-compliant ambient AI scribe designed to eliminate physician burnout caused by Electronic Medical Record (EMR) data entry. By capturing patient-physician consultations in real time via browser audio, Doctors Copilot performs multi-speaker diarization, extracts clinical entities, and orchestrates specialized Large Language Model (LLM) agents to draft highly accurate SOAP notes, referral letters, and billing code recommendations (ICD-10/CPT).
-
-Crucially, **Doctors Copilot operates under a strict "Clinician-in-the-Loop" safety model.** No clinical document or billing recommendation is ever finalized or committed to the EMR database without explicit physician review and cryptographic sign-off.
-
----
-
-## 🏛️ System Architecture & Data Pipeline
-
-```text
-[WebRTC / Browser Audio Stream] 
-               │ (Compressed WebM/Opus @ 25-30 kbps)
-               ▼
-[FastAPI Ingestion Gateway] ──(FFmpeg Subprocess Transcoder)──► [16kHz PCM s16le]
-               │
-               ▼
-[Azure AI Speech Service] ──(Real-time Diarization)──► [Azure Blob Storage] (Encrypted Audio)
-               │
-               ▼ (Timestamped Speaker Turns: Doctor / Patient)
-[Azure OpenAI Multi-Agent Orchestrator] (LangChain / LangGraph)
-               ├──► 1. Medical NLP Engine (Text Analytics for Health) ──► FHIR R4 JSON
-               ├──► 2. Documentation Agent (SOAP Notes, Referrals, Instructions)
-               ├──► 3. Coding Agent (ICD-10-CM & CPT Procedure Recommendations)
-               └──► 4. Validation Agent (Anti-Hallucination & Evidence Guardrails)
-               │
-               ▼
-[React / Next.js Review UI] ──(Edit / Amend / Sign-off)──► [Azure Cosmos DB] (Immutable Ledger)
-
-****
-
-✨ Core Module Specifications
-1. Acoustic Ingestion & Diarization Engine
-Protocol: WebSocket streaming over TLS 1.3 with browser-native hardware acoustic echo cancellation (AEC) and active noise suppression.
-
-Payload Optimization: Audio is streamed from the client as compressed WebM/Opus chunks and asynchronously piped through a headless FFmpeg subprocess in the backend, converting it to 16kHz PCM on the fly to reduce network bandwidth by 88%.
-
-Speaker Attribution: Real-time acoustic fingerprinting maps conversational turns deterministically to Doctor and Patient roles.
-
-2. Multi-Agent AI Clinical Pipeline
-To prevent context bleed and hallucination, generative tasks are distributed across isolated Azure OpenAI (GPT-4o) agents:
-
-Medical Extraction Agent: Transforms raw conversation turns into structured facts (symptoms, duration, severity, allergies, medications).
-
-Documentation Agent: Drafts clinical artifacts (SOAP notes, progress notes, discharge summaries).
-
-Coding Agent: Recommends primary/secondary ICD-10 and CPT billing codes with associated confidence intervals and clinical justifications.
-
-Validation Guardrail: Cross-references every generated assertion against the verbal transcript; flags unsupported claims for doctor review.
-
-3. Zero-Trust Security & Compliance (Microsoft Entra ID)
-Authentication: Next.js uses Auth.js (v5) to authenticate clinicians via Microsoft Entra ID (Azure AD), acquiring OAuth 2.0 access tokens.
-
-Authorization: FastAPI enforces stateless, in-memory RSA signature verification using PyJWT and dynamic JWKS key caching, ensuring strict Role-Based Access Control (RBAC).
-
-Auditability: All modifications made duringarket clinician review phases are tracked in an immutable temporal ledger in Azure Cosmos DB—records are versioned, never overwritten.
-
-📂 Repository Structure
-Plaintext
-doctors-copilot/
+📌 Executive SummaryDoctors Copilot is a HIPAA- and GDPR-compliant ambient AI clinical documentation assistant designed to eliminate physician burnout caused by Electronic Medical Record (EMR) data entry. By capturing patient-physician consultations in real time via browser audio streaming, Doctors Copilot performs multi-speaker acoustic diarization, extracts clinical entities, and orchestrates specialized Large Language Model (LLM) agents to draft comprehensive SOAP notes, referral letters, medical instructions, and compliant billing code recommendations (ICD-10-CM / CPT).Clinician-in-the-Loop Safety Model: No clinical document, structured diagnosis, or billing recommendation is ever finalized or committed to the EMR database without explicit physician review, interactive editing, and cryptographic sign-off.🏛️ System Architecture & Data FlowPlaintext[Browser Audio Stream / WebRTC] 
+        │ (Compressed WebM/Opus @ 25-30 kbps)
+        ▼
+[FastAPI Ingestion Gateway (`/v1/ws/scribe`)]
+        │ (Headless FFmpeg Subprocess Transcoder)
+        ▼
+[16kHz PCM s16le Audio Stream] ──► [Azure AI Speech Service (Real-Time Diarization)]
+        │
+        ▼ (Timestamped Speaker Turns: Doctor / Patient)
+[LangGraph Multi-Agent Orchestrator (Azure OpenAI GPT-4o)]
+        ├──► Node 1: Clinical Extraction Agent (Symptoms, Vitals, Medications)
+        ├──► Node 2: Documentation Agent (SOAP Synthesis)
+        ├──► Node 3: Medical Coding Agent (ICD-10 & CPT Mapping)
+        └──► Node 4: Validation Guardrail Agent (Anti-Hallucination & Evidence Audit)
+        │
+        ▼ (Self-Correcting Feedback Loop if Validation Fails)
+[Next.js Review Dashboard] 
+        │ (Physician Edit, Amend & Sign-off)
+        ▼
+[Azure Cosmos DB (Immutable Ledger)] & [Azure Health Data Services (FHIR R4 Sync)]
+🧩 Comprehensive Core Module Specifications1. Acoustic Ingestion & Streaming Mesh (backend/app/services/service_bus_mesh.py)Protocol: Asynchronous WebSocket streaming over TLS 1.3 incorporating hardware-accelerated acoustic echo cancellation (AEC) and active noise suppression.Bandwidth Optimization: Client audio chunks are streamed in compressed WebM/Opus format and piped asynchronously through a headless FFmpeg subprocess, transcoding streams on-the-fly to 16kHz PCM s16le to minimize networking overhead.Event Mesh: Asynchronous consultation payloads are published across Azure Service Bus queues using either connection strings or Managed Identity (DefaultAzureCredential) for decoupled background worker processing.2. Retrieval-Augmented Generation & Clinical Guidelines (backend/app/services/medical_rag.py)Vector Search: Connects securely to Azure AI Search using vector embeddings generated by Azure OpenAI (text-embedding-ada-002).Formulary & Protocol Grounding: Executes hybrid semantic and vector similarity queries across hospital institutional guidelines, RxNorm drug formularies, and clinical trial databases to ground AI-generated care plans in verified evidence.3. Self-Correcting LangGraph Multi-Agent Orchestrator (backend/app/services/langgraph_orchestrator.py)Stateful Workflow: Implements a state-graph (StateGraph) using LangGraph and Azure OpenAI (gpt-4o) with strict Pydantic v2 validation schemas.Multi-Step Pipeline:Extraction Node: Isolates symptoms, durations, vitals, and medications into structured JSON entities.SOAP Synthesis Node: Structures clinical narratives into Subjective, Objective, Assessment, and Plan components.Medical Coding Node: Maps diagnoses and procedures to exact ICD-10-CM and CPT billing codes.Validation Guardrail Node: Audits generated notes against raw transcripts for dangerous hallucinations or missing context. Automatically loops back to SOAP generation if validation fails (up to 3 iterations).4. Healthcare Interoperability & Billing EnginesFHIR R4 Direct Sync (backend/app/services/fhir_client.py): Securely communicates with Azure Health Data Services via Microsoft Entra ID bearer tokens, executing direct HL7 FHIR R4 upserts and transaction bundles.ANSI X12 5010A1 837P Generator (backend/app/services/edi_generator.py): Translates internal revenue cycle claims into standard electronic data interchange (EDI) format (ISA, GS, ST, BHT, NM1, HI, LX, SV1, SE, GE, IEA) ready for clearinghouse transmission.⚙️ Environment Variables Configuration ReferenceVariable NameDescriptionDefault / ExampleAZURE_OPENAI_ENDPOINTAzure AI Foundry / OpenAI endpoint URL[https://your-resource.openai.azure.com/](https://your-resource.openai.azure.com/)AZURE_OPENAI_KEYAPI key for Azure OpenAI serviceyour-openai-api-keyAZURE_OPENAI_DEPLOYMENTModel deployment namegpt-4oAZURE_SEARCH_ENDPOINTAzure AI Search service endpoint[https://your-search.search.windows.net](https://your-search.search.windows.net)AZURE_COSMOS_ENDPOINTAzure Cosmos DB NoSQL account endpoint[https://your-cosmos.documents.azure.com:443/](https://your-cosmos.documents.azure.com:443/)AZURE_COSMOS_KEYPrimary Master Key for Cosmos DByour-cosmos-keyAZURE_SERVICEBUS_CONNECTION_STRINGConnection string for Azure Service BusEndpoint=sb://...AZURE_FHIR_SERVICE_URLAzure Health Data Services FHIR R4 URL[https://workspace-fhir.fhir.azurehealthcareapis.com](https://workspace-fhir.fhir.azurehealthcareapis.com)APPLICATIONINSIGHTS_CONNECTION_STRINGOpenTelemetry Application Insights connectionInstrumentationKey=...📂 Complete Repository StructurePlaintextdoctors-copilot/
 ├── .github/
-│   └── workflows/                # CI/CD pipelines (Terraform & DevSecOps Docker deployment)
-├── backend/                      # Python 3.12, FastAPI, Azure SDKs, PyJWT
+│   └── workflows/
+│       ├── terraform.yml               # Automated IaC provisioning via Azure OIDC
+│       └── deploy-app.yml              # DevSecOps build, Trivy CVE scan, and ACA deploy
+├── backend/
 │   ├── app/
-│   │   ├── api/                  # REST endpoints, health probes, & /v1/stream WebSocket router
-│   │   ├── core/                 # Entra ID security, JWKS validation, config loaders
-│   │   ├── models/               # Pydantic v2 validation schemas & DB temporal models
-│   │   └── services/             # FFmpeg audio transcoder, NLP pipeline, Agent orchestrator
-│   ├── Dockerfile                # Hardened 3-stage build (Non-root, Headless FFmpeg)
-│   └── requirements.txt          # Pinned production dependencies
-├── frontend/                     # Next.js 14 App Router, TypeScript, Tailwind CSS
+│   │   ├── api/                        # FastAPI REST routers, health probes, & WebSocket endpoints
+│   │   ├── core/                       # Entra ID security, JWKS validation, & OpenTelemetry telemetry
+│   │   ├── models/                     # Pydantic v2 validation schemas & DB temporal models
+│   │   └── services/                   # FFmpeg transcoder, Medical RAG, LangGraph orchestrator, FHIR, EDI
+│   ├── tests/
+│   │   ├── conftest.py                 # Pytest asynchronous fixtures & test client setup
+│   │   ├── test_websocket.py           # WebSocket audio stream integration tests
+│   │   ├── test_ledger.py              # Cosmos DB append-only ledger and versioning tests
+│   │   ├── test_langgraph.py           # Multi-agent workflow loop verification tests
+│   │   └── test_enterprise_ready.py    # ANSI X12 837P EDI claim generation & system tests
+│   ├── Dockerfile                      # Hardened 3-stage non-root container with static FFmpeg
+│   ├── requirements.txt                # Pinned production dependencies
+│   └── requirements-dev.txt            # Testing dependencies (pytest, pytest-asyncio, httpx)
+├── frontend/
 │   ├── src/
-│   │   ├── app/                  # Consultation dashboard & authentication routes
-│   │   ├── components/scribe/    # AudioControls, TranscriptViewer, SOAPNoteEditor
-│   │   ├── hooks/                # useAudioStreamer (WebRTC & WebSocket management)
-│   │   └── types/                # Clinical domain interfaces & state models
-└── infra/                        # Terraform Infrastructure-as-Code (VNet, Private Endpoints, Cosmos, ACA)
-
-🚀 Getting Started (Local Development)
-Prerequisites
-Node.js 20+ and npm/pnpm
-Python 3.12+ and Docker Desktop
-An active Azure Subscription with deployed AI Speech and OpenAI resources.
-
-1. Backend Setup
-Bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
+│   │   ├── app/                        # Next.js 14 App Router dashboard & authentication routes
+│   │   ├── components/                 # Audio controls, TranscriptViewer, SOAPNoteEditor, Billing table
+│   │   ├── hooks/                      # Custom hooks for WebRTC and WebSocket state management
+│   │   └── types/                      # Clinical domain TypeScript interfaces
+│   ├── Dockerfile                      # Next.js standalone runner container configuration
+│   ├── package.json                    # Node dependencies (Next.js 14, Tailwind CSS, Auth.js)
+│   ├── tsconfig.json                   # Strict TypeScript compiler options
+│   └── tailwind.config.js              # Custom medical brand color palette extensions
+├── infra/
+│   ├── main.tf                         # VNet, Subnets, Private Endpoints, Cosmos, AI Foundry, ACA
+│   └── cosmosdb.tf                     # Cosmos DB NoSQL ledger, indexing policies, and continuous backup
+└── docker-compose.yml                  # Local multi-container orchestration (Frontend, Backend, Cosmos Emulator)
+🚀 Getting Started & Local DevelopmentPrerequisitesNode.js 20+ and npm/pnpmPython 3.12+ and pip virtual environmentsDocker Desktop & Docker ComposeOption 1: Local Orchestration via Docker Compose (Recommended)Spins up the Next.js frontend, FastAPI backend with integrated FFmpeg, and the local Linux Azure Cosmos DB Emulator:Bashdocker-compose up --build
+Navigate to http://localhost:3000 to access the clinician review workspace.Option 2: Manual Local Development1. Backend SetupBashcd backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
-# Export local environment variables
-export AZURE_SPEECH_KEY="your_speech_key"
+# Set local test environment variables
+export AZURE_SPEECH_KEY="mock_speech_key"
 export AZURE_SPEECH_REGION="eastus"
-export ENTRA_TENANT_ID="your_entra_tenant_id"
-export ENTRA_CLIENT_ID="your_api_client_id"
 
-# Launch async Uvicorn server
+# Run test suite to verify installation
+pytest -v
+
+# Launch FastAPI async development server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-2. Frontend Setup
-Bash
-cd frontend
+2. Frontend SetupBashcd frontend
 npm install
 
-Check List:
-Here is the complete checklist of the files
+# Configure environment variables in .env.local
+# NEXT_PUBLIC_API_URL=http://localhost:8000
 
-1. Backend Service Files (backend/)
-backend/requirements.txt (Core dependencies)
-backend/requirements-dev.txt (Testing dependencies: pytest, pytest-asyncio, httpx, pytest-mock)
-backend/Dockerfile (Hardened 3-stage non-root container with static FFmpeg)
-backend/app/main.py (FastAPI app entrypoint with OpenTelemetry instrumentation)
-backend/app/services/service_bus_mesh.py (Azure Service Bus queue publisher/consumer)
-backend/app/services/medical_rag.py (Azure AI Search vector RAG service for clinical guidelines)
-backend/app/services/langgraph_orchestrator.py (Self-correcting LangGraph multi-agent loop: Extraction, SOAP, Coding, Validation)
-backend/app/services/fhir_client.py (Azure Health Data Services FHIR R4 direct sync engine)
-backend/app/services/edi_generator.py (ANSI X12 5010A1 837P professional claim generator)
-backend/app/core/telemetry.py (OpenTelemetry & Azure Application Insights tracer configuration)
-backend/tests/conftest.py (Pytest fixtures and test client setup)
-backend/tests/test_websocket.py (WebSocket audio stream integration test)
-backend/tests/test_ledger.py (Cosmos DB append-only ledger and versioning test)
-backend/tests/test_langgraph.py (LangGraph multi-agent workflow test)
-backend/tests/test_enterprise_ready.py (Enterprise EDI and system validation test)
-2. Frontend Application Files (frontend/)
-frontend/Dockerfile (Next.js standalone runner container configuration)
-frontend/package.json & configuration files (Next.js 14 App Router, TypeScript, Tailwind CSS, Auth.js)
-3. Infrastructure & DevOps Files (infra/ & .github/)
-infra/main.tf & related Terraform scripts (Virtual Network, Private Endpoints, Cosmos DB, Key Vault, Azure AI Foundry, Container Apps)
-infra/cosmosdb.tf (Cosmos DB NoSQL ledger and backup definitions)
-.github/workflows/terraform.yml (Automated IaC provisioning via Azure OIDC)
-.github/workflows/deploy-app.yml (DevSecOps build, Trivy CVE scan, and Container Apps zero-downtime deploy)
-4. Local Orchestration (docker-compose.yml)
-docker-compose.yml (Spins up the Next.js frontend, FastAPI backend with FFmpeg, and the local Linux Azure Cosmos DB Emulator)
+npm run dev
+Open http://localhost:3000 in your browser.🔒 Security, Compliance & DevOpsZero-Trust Authentication: Authentication is handled by Next.js Auth.js integrated with Microsoft Entra ID (Azure AD). FastAPI validates incoming OAuth 2.0 JWT tokens against cached Microsoft JWKS endpoints.Container Security & Trivy Scanning: Every backend build runs an automated Trivy CVE vulnerability scanner in GitHub Actions, blocking images with CRITICAL or HIGH vulnerabilities from reaching production and uploading results directly to the GitHub Security tab.Infrastructure as Code (IaC): All Azure infrastructure (VNets, Private Endpoints, Key Vaults, Cosmos DB, Container Apps) is provisioned declaratively via Terraform, authenticating securely via Azure OpenID Connect (OIDC) without storing long-lived client secret keys.
 
 # Configure environment variables in .env.local
 # AUTH_MICROSOFT_ENTRA_ID_ID, AUTH_MICROSOFT_ENTRA_ID_SECRET, etc.
