@@ -1,0 +1,77 @@
+name: "DevSecOps Build, Trivy Scan & Container Apps Deploy"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-app.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-app.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+
+jobs:
+  build-scan-deploy:
+    name: "Build, Trivy Scan & Zero-Downtime Deploy"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name ${{ secrets.AZURE_ACR_NAME }}
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:${{ github.sha }} \
+            -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:latest \
+            -f backend/Dockerfile backend/
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Push Docker Image to ACR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:${{ github.sha }}
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:latest
+
+      - name: Deploy to Azure Container Apps (Zero-Downtime)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          app-name: 'doctors-copilot-backend'
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          image: ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/doctors-copilot-backend:${{ github.sha }}
+          target-port: 8000
+          acr-name: ${{ secrets.AZURE_ACR_NAME }}
