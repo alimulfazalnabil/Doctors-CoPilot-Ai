@@ -1,0 +1,5 @@
+# Testing and Mocking Framework Dependencies
+pytest>=9.0.0
+pytest-asyncio>=1.4.0
+pytest-mock>=3.14.0
+httpx>=0.27.0
