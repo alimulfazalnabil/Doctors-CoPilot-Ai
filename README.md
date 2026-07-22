@@ -1,5 +1,5 @@
 # 🩺 Doctors Copilot
-**An Enterprise-Grade, Ambient AI Clinical Documentation & Coding Assistant**
+**An Enterprise-Grade, Clinical Documentation Assistant**
 
 [![Azure](https://img.shields.io/badge/Cloud-Azure%20Container%20Apps-0089D6?style=flat-square&logo=microsoftazure)](https://azure.microsoft.com/)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014%20(App%20Router)-000000?style=flat-square&logo=next.dot.js)](https://nextjs.org/)
